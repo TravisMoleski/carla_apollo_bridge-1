@@ -184,7 +184,7 @@ class CarlaCyberBridge(CompatibleNode):
                                                        GetBlueprintsResponse,
                                                        self.get_blueprints)
 
-        self.carla_weather_reader = self.new_reader("/carla/weather_control",
+        self.carla_weather_reader   = self.new_reader("/carla/weather_control",
                                                     CarlaWeatherParameters,
                                                     self.on_weather_changed)
         self.logdebug("carla_weather_reader.")
@@ -240,7 +240,7 @@ class CarlaCyberBridge(CompatibleNode):
         weather.precipitation = weather_parameters.precipitation
         weather.precipitation_deposits = weather_parameters.precipitation_deposits
         weather.wind_intensity = weather_parameters.wind_intensity
-        weather.fog_density = weather_parameters.fog_density
+        weather.fog_density  = weather_parameters.fog_density
         weather.fog_distance = weather_parameters.fog_distance
         weather.wetness = weather_parameters.wetness
         weather.sun_azimuth_angle = weather_parameters.sun_azimuth_angle
@@ -250,6 +250,7 @@ class CarlaCyberBridge(CompatibleNode):
     def process_run_state(self):
         """
         process state changes
+    
         """
         command = None
 
@@ -259,7 +260,6 @@ class CarlaCyberBridge(CompatibleNode):
 
         while command is not None and cybercomp.ok():
             self.carla_run_state = command
-
             if self.carla_run_state == CarlaControl.Command.PAUSE:
                 # wait for next command
                 self.loginfo("State set to PAUSED")
@@ -331,8 +331,7 @@ class CarlaCyberBridge(CompatibleNode):
                 self.timestamp_last_run = carla_snapshot.timestamp.elapsed_seconds
                 self.update_clock(carla_snapshot.timestamp)
                 self.status_writer.set_frame(carla_snapshot.frame)
-                self._update(carla_snapshot.frame,
-                             carla_snapshot.timestamp.elapsed_seconds)
+                self._update(carla_snapshot.frame, carla_snapshot.timestamp.elapsed_seconds)
 
     def _update(self, frame_id, timestamp):
         """
@@ -382,6 +381,7 @@ class CarlaCyberBridge(CompatibleNode):
             # self.actor_factory.thread.join()
         else:
             self.synchronous_mode_update_thread.join()
+
         self.loginfo("Object update finished.")
         # self.debug_helper.destroy()
         self.status_writer.destroy()
@@ -400,9 +400,9 @@ def main(args=None):
     maintaining the communication client and the CarlaBridge object
     """
     carla_bridge = None
-    carla_world = None
+    carla_world  = None
     carla_client = None
-    executor = None
+    executor   = None
     parameters = {}
 
     executor = cybercomp.executors.MultiThreadedExecutor()
@@ -413,10 +413,7 @@ def main(args=None):
     carla_bridge.loginfo("The config file path is {}.".format(config_file))
 
     parameters = yaml.safe_load(open(config_file))['carla']
-
     # self.loginfo(parameters)
-
-
 
     carla_bridge.loginfo("Trying to connect to {host}:{port}".format(
         host=parameters['host'], port=parameters['port']))

@@ -1,6 +1,5 @@
 xhost +
 docker run \
-    --rm \
     --privileged \
     -e DISPLAY=$DISPLAY \
     --gpus=all \

@@ -12,6 +12,8 @@ Classes to handle Carla vehicles
 import math
 import os
 import time
+import utm
+import weakref
 
 import numpy as np
 import carla
@@ -37,6 +39,30 @@ from modules.common.proto.error_code_pb2 import ErrorCode
 from modules.routing.proto.routing_pb2 import RoutingResponse
 from modules.transform.proto.transform_pb2 import TransformStamped, TransformStampeds
 
+# class GnssSensor(object):
+#     def __init__(self, parent_actor):
+#         self.sensor = None
+#         self._parent = parent_actor
+#         self.lat = 0.0
+#         self.lon = 0.0
+#         world = self._parent.get_world()
+#         # bp = world.get_blueprint_library().find('sensor.other.gnss')
+
+#         gnss_actor = world.get_actors()
+#         print(gnss_actor)
+#         self.sensor = world.get_actor().filter('sensor.other.gnss')[0]
+#         # We need to pass the lambda a weak reference to self to avoid circular
+#         # reference.
+#         weak_self = weakref.ref(self)
+#         self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event))
+
+#     @staticmethod
+#     def _on_gnss_event(weak_self, event):
+#         self = weak_self()
+#         if not self:
+#             return
+#         self.lat = event.latitude
+#         self.lon = event.longitude
 
 class EgoVehicle(Vehicle):
     """
@@ -69,6 +95,7 @@ class EgoVehicle(Vehicle):
         self.vehicle_info_writed = False
         self.vehicle_control_override = False
         self.vehicle_loc_set = False
+        self.use_utm = True
 
         self._vehicle_control_applied_callback = vehicle_control_applied_callback
 
@@ -81,7 +108,7 @@ class EgoVehicle(Vehicle):
             CarlaEgoVehicleInfo,
             qos_depth=10)
         self.vehicle_pose_writer = node.new_writer(
-            "/apollo/localization/pose",
+            "/apollo/localization/pose_game",
             LocalizationEstimate,
             qos_depth=10)
         self.localization_status_writer = node.new_writer(
@@ -126,6 +153,13 @@ class EgoVehicle(Vehicle):
         tf_msg.transform.translation.x = pose.position.x
         tf_msg.transform.translation.y = pose.position.y
         tf_msg.transform.translation.z = pose.position.z
+
+        # gnss_dat = carla.SensorData.GnssMeasurement
+        # print(gnss_dat)
+
+        # tf_msg.transform.translation.x , tf_msg.transform.translation.y, zone, ut = utm.from_latlon(gnss_dat.latitude,gnss_dat.longitude)
+
+        # localization_estimate.pose.position.x , localization_estimate.pose.position.y, zone, ut = utm.from_latlon(gnss_dat.latitude,gnss_dat.longitude)
 
         tf_msg.transform.rotation.qx = pose.orientation.qx
         tf_msg.transform.rotation.qy = pose.orientation.qy
@@ -204,8 +238,8 @@ class EgoVehicle(Vehicle):
 
         transform = self.carla_actor.get_transform()
         spectator = self.world.get_spectator()
-        print("vehicle location {},{}".format(-10 * math.radians(math.cos(transform.rotation.yaw)),
-                                              -10 * math.radians(math.sin(transform.rotation.yaw))))
+        # print("vehicle location {},{}".format(-10 * math.radians(math.cos(transform.rotation.yaw)),
+        #                                       -10 * math.radians(math.sin(transform.rotation.yaw))))
         spectator.set_transform(
             carla.Transform(transform.location + carla.Location(x=-10 * math.cos(math.radians(transform.rotation.yaw)),
                                                                 y=-10 * math.sin(math.radians(transform.rotation.yaw)),
@@ -215,7 +249,8 @@ class EgoVehicle(Vehicle):
         '''
         Mock locaization estimate.
         '''
-        if not self.vehicle_loc_set:
+        # if not self.vehicle_loc_set:
+        if 1:
             self.vehicle_loc_set = True
             self.node.loginfo("=========================================")
             transform = self.carla_actor.get_transform()
@@ -241,20 +276,38 @@ class EgoVehicle(Vehicle):
             localization_estimate.header.timestamp_sec = self.node.get_time()
             localization_estimate.header.frame_id = 'novatel'
 
-            cyber_pose = trans.carla_transform_to_cyber_pose(transform)
-            localization_estimate.pose.position.x = cyber_pose.position.x
-            localization_estimate.pose.position.y = cyber_pose.position.y
-            localization_estimate.pose.position.z = cyber_pose.position.z
-            self.node.loginfo("position.x is {}, position.y is {}, position.z is {}".format(
-                cyber_pose.position.x, cyber_pose.position.y, cyber_pose.position.z))
 
+
+            cyber_pose = trans.carla_transform_to_cyber_pose(transform)
+
+
+            if self.use_utm:
+                cyber_loc  = carla.Location(x=cyber_pose.position.x, 
+                                            y=cyber_pose.position.y, 
+                                            z=cyber_pose.position.z)
+
+                getGeo = self.map.transform_to_geolocation(cyber_loc)
+                utm_x, utm_y, zone, ut = utm.from_latlon(getGeo.latitude, getGeo.longitude)
+                localization_estimate.pose.position.x = utm_x
+                localization_estimate.pose.position.y = utm_y
+
+            else:
+                localization_estimate.pose.position.x = cyber_pose.position.x
+                localization_estimate.pose.position.y = cyber_pose.position.y
+            localization_estimate.pose.position.z = cyber_pose.position.z
+
+
+            # self.node.loginfo("position.x is {}, position.y is {}, position.z is {}".format(
+            #     cyber_pose.position.x, cyber_pose.position.y, cyber_pose.position.z))
+
+        
             localization_estimate.pose.orientation.qx = cyber_pose.orientation.qx
             localization_estimate.pose.orientation.qy = cyber_pose.orientation.qy
             localization_estimate.pose.orientation.qz = cyber_pose.orientation.qz
             localization_estimate.pose.orientation.qw = cyber_pose.orientation.qw
-            self.node.loginfo("qx is {}, qy is {}, qz is {}, qw is {}".format(
-                cyber_pose.orientation.qx, cyber_pose.orientation.qy, cyber_pose.orientation.qz,
-                cyber_pose.orientation.qw))
+            # self.node.loginfo("qx is {}, qy is {}, qz is {}, qw is {}".format(
+            #     cyber_pose.orientation.qx, cyber_pose.orientation.qy, cyber_pose.orientation.qz,
+            #     cyber_pose.orientation.qw))
 
             cyber_twist = trans.carla_velocity_to_cyber_twist(linear_vel, angular_vel)
             localization_estimate.pose.linear_velocity.x = cyber_twist.linear.x
@@ -269,12 +322,12 @@ class EgoVehicle(Vehicle):
             localization_estimate.pose.linear_acceleration.x = cyber_line_accel.linear.x
             localization_estimate.pose.linear_acceleration.y = cyber_line_accel.linear.y
             localization_estimate.pose.linear_acceleration.z = cyber_line_accel.linear.z
-            self.node.loginfo(
-                "\n cyber_twist.linear is {}, \n cyber_twist.angular is {}, \n cyber_line_accel is {}".format(
-                    cyber_twist.linear, cyber_twist.angular, cyber_line_accel))
+            # self.node.loginfo(
+            #     "\n cyber_twist.linear is {}, \n cyber_twist.angular is {}, \n cyber_line_accel is {}".format(
+            #         cyber_twist.linear, cyber_twist.angular, cyber_line_accel))
 
             roll, pitch, yaw = trans.cyber_quaternion_to_cyber_euler(cyber_pose.orientation)
-            self.node.loginfo("====roll is {}, pitch is {}, yaw is {}".format(roll, pitch, yaw))
+            # self.node.loginfo("====roll is {}, pitch is {}, yaw is {}".format(roll, pitch, yaw))
             # cyber_roll, cyber_pitch, cyber_yaw = trans.carla_rotation_to_RPY(transform.rotation)
             # self.node.loginfo("++++roll is {}, pitch is {}, yaw is {}".format(cyber_roll, cyber_pitch, cyber_yaw))
 

@@ -102,9 +102,9 @@ class Lidar(Sensor):
 
         for lidar_point in lidar_data:
             cyber_point = PointXYZIT()
-            cyber_point.x = lidar_point[0]
-            cyber_point.y = lidar_point[1]
-            cyber_point.z = lidar_point[2]
+            cyber_point.x = -lidar_point[1]
+            cyber_point.y =  lidar_point[0]
+            cyber_point.z =  lidar_point[2]
             point_cloud_msg.point.append(cyber_point)
 
         self.lidar_writer.write(point_cloud_msg)

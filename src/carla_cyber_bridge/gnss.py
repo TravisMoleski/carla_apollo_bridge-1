@@ -20,6 +20,8 @@ from modules.drivers.gnss.proto.heading_pb2 import Heading
 from modules.localization.proto.gps_pb2 import Gps
 from modules.drivers.gnss.proto.ins_pb2 import InsStat
 
+# from modules.localization.proto.localization_pb2 import LocalizationEstimate, LocalizationStatus
+
 class Gnss(Sensor):
 
     """
@@ -65,6 +67,12 @@ class Gnss(Sensor):
         self.gnss_status_writer = node.new_writer(self.get_topic_prefix() + "/ins_stat",
                                            InsStat,
                                            qos_depth=10)
+
+        # self.vehicle_pose_writer = node.new_writer(
+        #     "/apollo/localization/pose",
+        #     LocalizationEstimate,
+        #     qos_depth=10)
+
         self.listen()
 
     def destroy(self):
@@ -116,3 +124,20 @@ class Gnss(Sensor):
         gnss_status_msg.ins_status = 0
         gnss_status_msg.pos_type = 56
         self.gnss_status_writer.write(gnss_status_msg)
+
+        # localization_estimate = LocalizationEstimate()
+        # localization_estimate.header.timestamp_sec = self.node.get_time()
+        # localization_estimate.header.frame_id = 'novatel'
+
+        # localization_estimate.pose.position.x , localization_estimate.pose.position.y, zone, ut = utm.from_latlon(carla_gnss_measurement.latitude,carla_gnss_measurement.longitude)
+        # localization_estimate.pose.position.z = carla_gnss_measurement.altitude
+
+
+
+
+
+
+
+
+
+

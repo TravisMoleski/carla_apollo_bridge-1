@@ -1,4 +1,4 @@
-use_sim_time: true
+use_sim_time: false
 carla:
   # the network connection for the python connection to CARLA
   host: '172.17.0.1'
@@ -9,7 +9,7 @@ carla:
   synchronous_mode_wait_for_vehicle_control_command: False
   fixed_delta_seconds: 0.05
   register_all_sensors: True
-  town: 'Town01'
+  town: 'ohio_ridges_v1-carla'
   # configuration values for the ego vehicle
   ego_vehicle:
     # the role name of the vehicles that acts as ego vehicle for this ros bridge instance
