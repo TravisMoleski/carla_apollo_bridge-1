@@ -14,8 +14,11 @@ from carla_cyber_bridge.vehicle import Vehicle
 from carla_cyber_bridge.walker import Walker
 from carla_cyber_bridge.static import Static
 
-from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
+from carla_common import transforms as trans
 
+from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
+import carla
+import utm
 
 class ObjectSensor(PseudoActor):
 
@@ -82,14 +85,33 @@ class ObjectSensor(PseudoActor):
         """
         cyber_objects = PerceptionObstacles()
         cyber_objects.header.CopyFrom(self.get_msg_header(frame_id="map", timestamp=timestamp))
+
+        carla_map = self.parent.map
+
         for actor_id in self.actor_list.keys():
             # currently only Vehicles, Walkers and Static Obstacles are added to the object array
             if self.parent is None or self.parent.uid != actor_id:
                 actor = self.actor_list[actor_id]
-                if isinstance(actor, Vehicle):
-                    cyber_objects.perception_obstacle.append(actor.get_object_info())
-                elif isinstance(actor, Walker):
-                    cyber_objects.perception_obstacle.append(actor.get_object_info())
-                elif isinstance(actor, Static):
-                    cyber_objects.perception_obstacle.append(actor.get_object_info())
+
+                if isinstance(actor, Vehicle) or isinstance(actor, Walker) or isinstance(actor, Static):
+                    obs = actor.get_object_info()
+                    if self.parent.use_utm:
+                        car_loc  = carla.Location(x=obs.position.x, 
+                                                  y=-obs.position.y, 
+                                                  z=obs.position.z)
+                        
+                        getGeo = carla_map.transform_to_geolocation(car_loc)
+                        utm_x, utm_y, zone, ut = utm.from_latlon(getGeo.latitude, getGeo.longitude)
+     
+                        obs.position.x = utm_x
+                        obs.position.y = utm_y
+
+                    cyber_objects.perception_obstacle.append(obs)
+
+                # elif isinstance(actor, Walker):
+                #     cyber_objects.perception_obstacle.append(actor.get_object_info())
+                # elif isinstance(actor, Static):
+                #     cyber_objects.perception_obstacle.append(actor.get_object_info())
+
+
         self.object_writer.write(cyber_objects)

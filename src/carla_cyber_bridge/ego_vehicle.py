@@ -108,7 +108,7 @@ class EgoVehicle(Vehicle):
             CarlaEgoVehicleInfo,
             qos_depth=10)
         self.vehicle_pose_writer = node.new_writer(
-            "/apollo/localization/pose_game",
+            "/apollo/localization/pose",
             LocalizationEstimate,
             qos_depth=10)
         self.localization_status_writer = node.new_writer(
@@ -282,11 +282,16 @@ class EgoVehicle(Vehicle):
 
 
             if self.use_utm:
-                cyber_loc  = carla.Location(x=cyber_pose.position.x, 
-                                            y=cyber_pose.position.y, 
-                                            z=cyber_pose.position.z)
+                # cyber_loc  = carla.Location(x=cyber_pose.position.x, 
+                #                             y=cyber_pose.position.y, 
+                #                             z=cyber_pose.position.z)
 
-                getGeo = self.map.transform_to_geolocation(cyber_loc)
+                tf = transform
+                tf = tf.location
+
+                # print(tf)
+
+                getGeo = self.map.transform_to_geolocation(tf)
                 utm_x, utm_y, zone, ut = utm.from_latlon(getGeo.latitude, getGeo.longitude)
                 localization_estimate.pose.position.x = utm_x
                 localization_estimate.pose.position.y = utm_y
